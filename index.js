@@ -1,4 +1,12 @@
-// Request Header Parser Microservice
+const express = require('express');
+const app = express();
+
+// Entrypoin
+app.get('/', (_, res) => {
+  res.end('App is running!');
+});
+
+// Timestamp Microservice
 app.get("/api/:dateString?", function (req, res) {
   const { params: { dateString } } = req;
 
@@ -15,4 +23,11 @@ app.get("/api/:dateString?", function (req, res) {
   res.json({ unix, utc });
 });
 
-app.listem
+// Request Header Parser Microservice
+app.get('/api/whoami', (req, res) => {
+});
+
+// listener from freeCodeCamp
+const listener = app.listen(process.env.PORT, () => {
+  console.log('Your app is listening on port', listener.address().port);
+});
