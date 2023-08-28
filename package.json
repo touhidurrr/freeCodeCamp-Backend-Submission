@@ -1,0 +1,17 @@
+{
+  "name": "freecodecamp-backend-submission",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "Md. Touhidur Rahman",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "@types/node": "^18.0.6",
+    "express": "^4.18.2",
+    "node-fetch": "^3.2.6"
+  }
+}
