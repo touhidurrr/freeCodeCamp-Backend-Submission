@@ -8,7 +8,8 @@ app.use(cors({ optionsSuccessStatus: 200 }));
 
 // parse json
 app.use(bodyParser.text());
-app.use(bodyParser.json());
+app.use(express.urlencoded());
+app.use(express.json());
 
 // Entrypoint
 app.get('/', (_, res) => {
@@ -21,14 +22,14 @@ const db = new Database();
 
 const isValidURL = (url) => {
   try {
-    new URL(url);
-    return true;
+    const newUrl = new URL(url);
+    return ['http:', 'https:'].includes(newUrl.protocol);
   } catch (e) {
     return false;
   }
 }
 
-app.post('/api/shorturl', async ({ body: url }, res) => {
+app.post('/api/shorturl', async ({ body: { url }}, res) => {
   if (!isValidURL(url)) {
     res.json({ error: 'invalid url' });
     return;
