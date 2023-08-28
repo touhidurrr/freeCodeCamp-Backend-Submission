@@ -1,9 +1,18 @@
 const express = require('express');
 const app = express();
 
-// Entrypoin
+// Entrypoint
 app.get('/', (_, res) => {
   res.end('App is running!');
+});
+
+// Request Header Parser Microservice
+app.get('/api/whoami', (req, res) => {
+  res.json({
+    ipaddress: req.ip,
+    language: req.get('accept-language'),
+    software: req.get('user-agent')
+  });
 });
 
 // Timestamp Microservice
@@ -21,10 +30,6 @@ app.get("/api/:dateString?", function (req, res) {
   }
 
   res.json({ unix, utc });
-});
-
-// Request Header Parser Microservice
-app.get('/api/whoami', (req, res) => {
 });
 
 // listener from freeCodeCamp
