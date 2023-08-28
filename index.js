@@ -1,6 +1,10 @@
 const express = require('express');
 const app = express();
 
+// cors for freeCodeCamp (by freeCodeCamp)
+const cors = require('cors');
+app.use(cors({ optionsSuccessStatus: 200 }));  
+
 // Entrypoint
 app.get('/', (_, res) => {
   res.end('App is running!');
