@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser')
 const app = express();
 
 // cors for freeCodeCamp (by freeCodeCamp)
@@ -7,8 +6,7 @@ const cors = require('cors');
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 // parse json
-app.use(bodyParser.text());
-app.use(express.urlencoded());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Entrypoint
