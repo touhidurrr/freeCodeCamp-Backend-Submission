@@ -1,9 +1,14 @@
 const express = require('express');
+const multer  = require('multer');
 const app = express();
 
 // cors for freeCodeCamp (by freeCodeCamp)
 const cors = require('cors');
 app.use(cors({ optionsSuccessStatus: 200 }));
+
+// server static files
+app.use(express.static(process.cwd() + '/public'));
+app.use('/public', express.static(process.cwd() + '/public'));
 
 // parse json
 app.use(express.urlencoded({ extended: true }));
@@ -14,7 +19,18 @@ app.get('/', (_, res) => {
   res.end('App is running!');
 });
 
-// Exercise Tracker
+// File Metadata Microservice
+const upload = multer({ dest: 'uploads/' });
+app.post('/api/fileanalyse', upload.single('upfile'), (req, res) => {
+  const {
+    originalname: name,
+    mimetype: type,
+    size
+  } = req.file;
+  res.json({ name, type, size });
+});
+
+// Exercise Tracker Microservice
 const ObjectID = require("bson-objectid");
 
 app.post('/api/users', async ({ body: { username }}, res) => {
@@ -128,7 +144,6 @@ app.get("/api/:dateString?", function (req, res) {
 
 // listener from freeCodeCamp
 const listener = app.listen(process.env.PORT, async () => {
-  await db.empty();
   console.log('Your app is listening on port', listener.address().port);
 });
 
