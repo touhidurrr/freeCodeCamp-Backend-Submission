@@ -14,6 +14,59 @@ app.get('/', (_, res) => {
   res.end('App is running!');
 });
 
+// Exercise Tracker
+const ObjectID = require("bson-objectid");
+
+app.post('/api/users', async ({ body: { username }}, res) => {
+  const _id = ObjectID();
+  const user = { _id, username };
+  await db.set(`fcc-backend-et:users:${_id}`, user);
+  res.json(user);
+});
+
+app.get('/api/users', async (_, res) => {
+  const userIds = await db.list('fcc-backend-et:users:');
+  const users = await Promise.all(userIds.map(id => db.get(id)));
+  res.json(users);
+});
+
+app.post('/api/users/:_id/exercises', async (req, res) => {
+  let { description, duration, date } = req.body;
+  duration = +duration; 
+  date = date ? new Date(date).toDateString() : new Date().toDateString();
+
+  const { _id } = req.params;
+  const exercise = { date, description, duration };
+  const [user] = await Promise.all([
+    db.get(`fcc-backend-et:users:${_id}`),
+    db.set(`fcc-backend-et:user-logs:${_id}:${ObjectID()}`, exercise),
+  ]);
+
+  res.json({ ...user, ...exercise });
+});
+
+app.get('/api/users/:_id/logs', async (req, res) => {
+  const { _id } = req.params;
+  const [user, logIds] = await Promise.all([
+    db.get(`fcc-backend-et:users:${_id}`),
+    db.list(`fcc-backend-et:user-logs:${_id}`),
+  ]);
+
+  let log = await Promise.all(logIds.map(logId => db.get(logId)));
+
+  let { from, to, limit } = req.query;
+  from = new Date(from || 0).valueOf();
+  to = !to ? null : new Date(to).valueOf();
+
+  log = log.filter(({ date }) => {
+    date = new Date(date).valueOf();
+    return date >= from && (to === null || date <= to);
+  });
+
+  if (limit) log = log.slice(0, +limit);
+  res.json({ ...user, log, count: log.length });
+});
+
 // URL Shortener Microservice
 const Database = require("@replit/database");
 const db = new Database();
@@ -74,6 +127,10 @@ app.get("/api/:dateString?", function (req, res) {
 });
 
 // listener from freeCodeCamp
-const listener = app.listen(process.env.PORT, () => {
+const listener = app.listen(process.env.PORT, async () => {
+  await db.empty();
   console.log('Your app is listening on port', listener.address().port);
 });
+
+process.on('error', err => console.log(err));
+process.on('uncaughtException', err => console.log(err));
