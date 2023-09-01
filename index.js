@@ -142,9 +142,13 @@ app.get("/api/:dateString?", function (req, res) {
   res.json({ unix, utc });
 });
 
-// listener from freeCodeCamp
-const listener = app.listen(process.env.PORT, async () => {
-  console.log('Your app is listening on port', listener.address().port);
+// start server
+app.listen(process.env.PORT, (err, address) => {
+  if (err) {
+    console.log(err);
+    process.exit(1);
+  }
+  console.log(`Server started on: ${address}`);
 });
 
 process.on('error', err => console.log(err));
