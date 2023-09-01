@@ -143,12 +143,8 @@ app.get("/api/:dateString?", function (req, res) {
 });
 
 // start server
-app.listen(process.env.PORT, (err, address) => {
-  if (err) {
-    console.log(err);
-    process.exit(1);
-  }
-  console.log(`Server started on: ${address}`);
+const listener = app.listen(process.env.PORT, () => {
+  console.log('Server started on:', listener.address());
 });
 
 process.on('error', err => console.log(err));
