@@ -1,0 +1,10 @@
+image: gitpod/workspace-bun
+
+tasks:
+  - name: Install dependencies and run
+    init: bun install
+    command: bun start
+
+ports:
+  - port: 3000
+    onOpen: open-preview
