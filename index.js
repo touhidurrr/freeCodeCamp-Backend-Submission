@@ -80,8 +80,8 @@ app.get("/api/users/:_id/logs", async (req, res) => {
 });
 
 // URL Shortener Microservice
-const Database = require("@replit/database");
-const db = new Database();
+const { Database } = require("bun:sqlite");
+const db = new Database(":memory:");
 
 const isValidURL = (url) => {
   try {
