@@ -17,8 +17,9 @@ app.use(express.static(process.cwd() + "/public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// database
+// init database
 const db = new Database(":memory:");
+db.exec(await Bun.file("index.sql").text());
 
 // Entrypoint
 app.get("/", (_, res) => {
@@ -33,55 +34,67 @@ app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
 });
 
 // Exercise Tracker Microservice
+const usersPostQuery = db.query(`\
+  insert into users(_id, username)
+  values(?1, ?2)
+  returning *;`);
+
 app.post("/api/users", async ({ body: { username } }, res) => {
-  const _id = ObjectID();
-  const user = { _id, username };
-  await db.set(`fcc-backend-et:users:${_id}`, user);
-  res.json(user);
+  const _id = ObjectID().toHexString();
+  res.json(usersPostQuery.get(_id, username));
 });
 
+const usersGetQuery = db.query(`select * from users;`);
 app.get("/api/users", async (_, res) => {
-  const userIds = await db.list("fcc-backend-et:users:");
-  const users = await Promise.all(userIds.map((id) => db.get(id)));
-  res.json(users);
+  res.json(usersGetQuery.all());
 });
 
-app.post("/api/users/:_id/exercises", async (req, res) => {
-  let { description, duration, date } = req.body;
-  duration = +duration;
-  date = date ? new Date(date).toDateString() : new Date().toDateString();
+const exercisesPostQuery = db.query(`\
+  insert into exercises(description, duration, date, userid)
+  values(?1, ?2, ?3, ?4)
+  returning description, duration, date;`);
 
-  const { _id } = req.params;
-  const exercise = { date, description, duration };
-  const [user] = await Promise.all([
-    db.get(`fcc-backend-et:users:${_id}`),
-    db.set(`fcc-backend-et:user-logs:${_id}:${ObjectID()}`, exercise),
-  ]);
+const exercisesUserQuery = db.query(`\
+  select * from users where (_id = ?);
+  `);
 
-  res.json({ ...user, ...exercise });
-});
+app.post(
+  "/api/users/:_id/exercises",
+  async ({ params: { _id }, body: { description, duration, date } }, res) => {
+    date = (date ? new Date(date) : new Date()).toDateString();
 
-app.get("/api/users/:_id/logs", async (req, res) => {
-  const { _id } = req.params;
-  const [user, logIds] = await Promise.all([
-    db.get(`fcc-backend-et:users:${_id}`),
-    db.list(`fcc-backend-et:user-logs:${_id}`),
-  ]);
+    const user = exercisesUserQuery.get(_id);
+    const exercise = exercisesPostQuery.get(description, duration, date, _id);
 
-  let log = await Promise.all(logIds.map((logId) => db.get(logId)));
+    res.json({ ...user, ...exercise });
+  },
+);
 
-  let { from, to, limit } = req.query;
-  from = new Date(from || 0).valueOf();
-  to = !to ? null : new Date(to).valueOf();
+const exercisesGetQuery = db.query(`\
+  select description, duration, date
+  from exercises where (userid = ?);
+  `);
 
-  log = log.filter(({ date }) => {
-    date = new Date(date).valueOf();
-    return date >= from && (to === null || date <= to);
-  });
+app.get(
+  "/api/users/:_id/logs",
+  async ({ params: { _id }, query: { from, to, limit } }, res) => {
+    const user = exercisesUserQuery.get(_id);
+    let log = exercisesGetQuery.all(_id);
 
-  if (limit) log = log.slice(0, +limit);
-  res.json({ ...user, log, count: log.length });
-});
+    from = new Date(from || 0).valueOf();
+    to = !to ? null : new Date(to).valueOf();
+
+    log = log.filter(({ date }) => {
+      date = new Date(date).valueOf();
+      return date >= from && (to === null || date <= to);
+    });
+
+    if (limit) log = log.slice(0, +limit);
+    const resp = { ...user, count: log.length, log };
+    console.log(resp);
+    res.json(resp);
+  },
+);
 
 // URL Shortener Microservice
 const isValidURL = (url) => {
@@ -93,16 +106,9 @@ const isValidURL = (url) => {
   }
 };
 
-const shorturlTableSql = `\
-create table shorturl (
-  short_url integer primary key,
-  original_url text
+const shorturlPostQuery = db.query(
+  "insert into shorturl(original_url) values(?) returning *;",
 );
-`;
-
-db.exec(shorturlTableSql);
-
-const shorturlPostQuery = db.query('insert into shorturl(original_url) values(?) returning *;');
 app.post("/api/shorturl", async ({ body: { url } }, res) => {
   if (!isValidURL(url)) {
     res.json({ error: "invalid url" });
@@ -112,7 +118,9 @@ app.post("/api/shorturl", async ({ body: { url } }, res) => {
   res.json(shorturlPostQuery.get(url));
 });
 
-const shorturlGetQuery = db.query('select original_url from shorturl where (short_url = ?);');
+const shorturlGetQuery = db.query(
+  "select original_url from shorturl where (short_url = ?);",
+);
 app.get("/api/shorturl/:serial", async ({ params: { serial } }, res) => {
   res.redirect(shorturlGetQuery.get(serial).original_url);
 });
