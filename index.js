@@ -1,18 +1,24 @@
 const express = require("express");
 const multer = require("multer");
+const cors = require("cors");
+const ObjectID = require("bson-objectid");
+const { Database } = require("bun:sqlite");
+
+// our app
 const app = express();
 
 // cors for freeCodeCamp (by freeCodeCamp)
-const cors = require("cors");
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 // server static files
 app.use(express.static(process.cwd() + "/public"));
-app.use("/public", express.static(process.cwd() + "/public"));
 
 // parse json
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// database
+const db = new Database(":memory:");
 
 // Entrypoint
 app.get("/", (_, res) => {
@@ -27,8 +33,6 @@ app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
 });
 
 // Exercise Tracker Microservice
-const ObjectID = require("bson-objectid");
-
 app.post("/api/users", async ({ body: { username } }, res) => {
   const _id = ObjectID();
   const user = { _id, username };
@@ -80,9 +84,6 @@ app.get("/api/users/:_id/logs", async (req, res) => {
 });
 
 // URL Shortener Microservice
-const { Database } = require("bun:sqlite");
-const db = new Database(":memory:");
-
 const isValidURL = (url) => {
   try {
     const newUrl = new URL(url);
@@ -92,24 +93,28 @@ const isValidURL = (url) => {
   }
 };
 
+const shorturlTableSql = `\
+create table shorturl (
+  short_url integer primary key,
+  original_url text
+);
+`;
+
+db.exec(shorturlTableSql);
+
+const shorturlPostQuery = db.query('insert into shorturl(original_url) values(?) returning *;');
 app.post("/api/shorturl", async ({ body: { url } }, res) => {
   if (!isValidURL(url)) {
     res.json({ error: "invalid url" });
     return;
   }
 
-  const count = (await db.get("fcc-backend-shorturl:count")) + 1;
-  await Promise.all([
-    db.set("fcc-backend-shorturl:count", count),
-    db.set(`fcc-backend-shorturl:${count}`, url),
-  ]);
-
-  res.json({ original_url: url, short_url: count });
+  res.json(shorturlPostQuery.get(url));
 });
 
+const shorturlGetQuery = db.query('select original_url from shorturl where (short_url = ?);');
 app.get("/api/shorturl/:serial", async ({ params: { serial } }, res) => {
-  const url = await db.get(`fcc-backend-shorturl:${serial}`);
-  res.redirect(url);
+  res.redirect(shorturlGetQuery.get(serial).original_url);
 });
 
 // Request Header Parser Microservice
